@@ -17,6 +17,18 @@ function update(field: keyof PersonalData, value: string) {
     emit('update', { ...props.data, [field]: value })
 }
 
+function maskPhone(value: string): string {
+    const d = value.replace(/\D/g, '').slice(0, 11)
+    if (d.length <= 10) {
+        return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2')
+    }
+    return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2')
+}
+
+function onPhoneInput(e: Event) {
+    update('phone', maskPhone((e.target as HTMLInputElement).value))
+}
+
 function onPhotoChange(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0]
     if (!file) return
@@ -147,8 +159,10 @@ const countries = [
                 <input
                     type="tel"
                     :value="data.phone"
-                    @input="update('phone', ($event.target as HTMLInputElement).value)"
+                    @input="onPhoneInput"
                     placeholder="(11) 99999-9999"
+                    inputmode="numeric"
+                    maxlength="15"
                     class="w-full rounded-lg border-gray-200 bg-gray-50 text-sm focus:bg-white focus:border-blue-500 focus:ring-blue-500 transition-colors"
                 />
             </div>
