@@ -39,6 +39,12 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Dashboard
                                 </NavLink>
+                                <NavLink
+                                    :href="route('resumes.index')"
+                                    :active="route().current('resumes.*')"
+                                >
+                                    Meus Currículos
+                                </NavLink>
                             </div>
                         </div>
 
