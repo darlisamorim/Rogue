@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PaymentController;
 use App\Models\CreditPackage;
 use App\Models\PricingConfig;
 use Illuminate\Foundation\Application;
@@ -27,8 +28,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::resource('resumes', \App\Http\Controllers\ResumeController::class)
-        ->except(['show']);
+    Route::resource('resumes', \App\Http\Controllers\ResumeController::class);
+
+    // Pagamento
+    Route::prefix('payment')->name('payment.')->group(function () {
+        Route::get('/checkout', [PaymentController::class, 'checkout'])->name('checkout');
+        Route::post('/initiate', [PaymentController::class, 'initiate'])->name('initiate');
+        Route::get('/status/{transactionId}', [PaymentController::class, 'status'])->name('status');
+    });
 });
+
+// Webhooks — fora do middleware CSRF
+Route::post('/payment/webhook/mercadopago', [PaymentController::class, 'webhookMercadoPago'])
+    ->name('payment.webhook.mercadopago')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+
+Route::post('/payment/webhook/asaas', [PaymentController::class, 'webhookAsaas'])
+    ->name('payment.webhook.asaas')
+    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
 
 require __DIR__.'/auth.php';

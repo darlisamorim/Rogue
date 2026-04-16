@@ -60,11 +60,11 @@ class PaymentController extends Controller
         $hasCredits = $this->creditService->hasEnoughCredits($user, $price);
 
         return Inertia::render('Payment/Checkout', [
-            'resumeId'      => $resumeId,
-            'type'          => $type,
-            'price'         => $price,
-            'hasCredits'    => $hasCredits,
-            'creditBalance' => (float) $user->credit_balance,
+            'resumeId'       => $resumeId,
+            'type'           => $type,
+            'price'          => (float) $price,
+            'hasCredits'     => $hasCredits,
+            'creditBalance'  => (float) $user->credit_balance,
             'creditPackages' => $creditPackages,
         ]);
     }
@@ -124,8 +124,8 @@ class PaymentController extends Controller
                 'transaction_id' => $transaction->id,
                 'pix_qr_code'    => $transaction->pix_qr_code,
                 'pix_copy_paste' => $transaction->pix_copy_paste,
-                'expires_at'     => $transaction->expires_at,
-                'amount'         => $transaction->amount,
+                'expires_at'     => $transaction->expires_at?->toIso8601String(),
+                'amount'         => (float) $transaction->amount,
                 'gateway'        => $transaction->gateway,
             ]);
         } catch (\Exception $e) {
@@ -139,17 +139,45 @@ class PaymentController extends Controller
 
     /**
      * Polling: retorna o status atual de uma transação.
+     * Se ainda estiver pendente, consulta diretamente na API do gateway (útil para desenvolvimento local sem webhooks).
      */
-    public function status(int $transactionId): JsonResponse
+    public function status(int $transactionId, MercadoPagoGateway $mpGateway, AsaasGateway $asaasGateway): JsonResponse
     {
         $transaction = Transaction::where('id', $transactionId)
             ->where('user_id', Auth::id())
             ->firstOrFail();
 
+        // Se ainda pendente, consulta o gateway diretamente (evita depender de webhook em dev)
+        if (!$transaction->isConfirmed() && $transaction->gateway_transaction_id) {
+            $gateway = $transaction->gateway === 'asaas' ? $asaasGateway : $mpGateway;
+
+            if ($transaction->gateway === 'mercadopago') {
+                $remote = $mpGateway->checkTransactionStatus($transaction->gateway_transaction_id);
+            } else {
+                $remote = null; // Asaas: usa webhook normalmente
+            }
+
+            if ($remote && $remote['status'] !== $transaction->status) {
+                $transaction->update([
+                    'status'       => $remote['status'],
+                    'gross_amount' => $remote['gross_amount'] ?? $transaction->amount,
+                    'fee_amount'   => $remote['fee_amount'] ?? 0,
+                    'net_amount'   => $remote['net_amount'] ?? $transaction->amount,
+                    'confirmed_at' => $remote['status'] === Transaction::STATUS_CONFIRMED ? now() : null,
+                ]);
+
+                if ($remote['status'] === Transaction::STATUS_CONFIRMED) {
+                    \App\Events\PaymentConfirmed::dispatch($transaction->fresh());
+                }
+
+                $transaction->refresh();
+            }
+        }
+
         return response()->json([
             'status'     => $transaction->status,
             'confirmed'  => $transaction->isConfirmed(),
-            'expires_at' => $transaction->expires_at,
+            'expires_at' => $transaction->expires_at?->toIso8601String(),
         ]);
     }
 

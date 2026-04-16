@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, toRef, onMounted } from 'vue'
-import { Head, Link } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import type { Resume, ResumeCustomization } from '@/types/resume'
 import type { Template } from '@/types/template'
 import { useResumeForm } from '@/Composables/useResumeForm'
@@ -47,6 +47,7 @@ const { saveStatus } = useAutoSave(
 
 const selectedTemplateId = ref(props.resume.template_id)
 const showTemplateSelector = ref(false)
+const showDownloadConfirm = ref(false)
 
 const currentTemplate = computed(() =>
     props.templates.find((t) => t.id === selectedTemplateId.value) ?? props.templates[0] ?? null,
@@ -67,6 +68,17 @@ const nextStepLabel = computed(() =>
     currentStep.value < STEPS.length - 1 ? STEPS[currentStep.value + 1].label : null,
 )
 const currentStepLabel = computed(() => STEPS[currentStep.value].label)
+
+function goToCheckout() {
+    const type = props.resume.is_downloaded ? 'redownload' : 'first_download'
+    router.get(route('payment.checkout'), { resume_id: props.resume.id, type })
+}
+
+// Chamado quando o usuário clica "Baixar PDF" dentro do TemplateSelector
+function onTemplateSelectorDownload() {
+    showTemplateSelector.value = false
+    showDownloadConfirm.value = true
+}
 
 // Auto-abrir visual se vier de ?visual=1
 onMounted(() => {
@@ -108,8 +120,72 @@ const saveLabelColor = computed(() => {
         @select="onSelectTemplate"
         @update-customization="onUpdateCustomization"
         @close="showTemplateSelector = false"
-        @download="showTemplateSelector = false"
+        @download="onTemplateSelectorDownload"
     />
+
+    <!-- Modal de confirmação de download -->
+    <Transition name="fade">
+        <div v-if="showDownloadConfirm"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            @click.self="showDownloadConfirm = false"
+        >
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+                <!-- Ícone -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-900 text-base">Tudo certo para baixar?</h3>
+                        <p class="text-xs text-gray-500 mt-0.5">Revise o estilo antes de confirmar o pagamento.</p>
+                    </div>
+                </div>
+
+                <!-- Detalhes do currículo -->
+                <div class="bg-gray-50 rounded-xl px-4 py-3 space-y-1.5 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Título</span>
+                        <span class="font-medium text-gray-800 truncate max-w-[160px]">{{ resumeTitle }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Template</span>
+                        <span class="font-medium text-gray-800">{{ currentTemplate?.name ?? '—' }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Fonte</span>
+                        <span class="font-medium text-gray-800">{{ customization.font }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">Cor principal</span>
+                        <span class="w-5 h-5 rounded-full border border-gray-200 inline-block" :style="{ background: customization.color }"></span>
+                    </div>
+                </div>
+
+                <!-- Ações -->
+                <div class="flex flex-col gap-2">
+                    <button
+                        type="button"
+                        @click="showDownloadConfirm = false; goToCheckout()"
+                        class="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        Confirmar e ir para pagamento
+                    </button>
+                    <button
+                        type="button"
+                        @click="showDownloadConfirm = false; showTemplateSelector = true"
+                        class="w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                        Voltar e ajustar o estilo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </Transition>
 
     <div class="h-screen flex flex-col bg-gray-50 overflow-hidden">
         <!-- Top bar -->
@@ -157,7 +233,7 @@ const saveLabelColor = computed(() => {
             <!-- Download button -->
             <button
                 type="button"
-                @click="showTemplateSelector = true"
+                @click="goToCheckout"
                 class="flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
             >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -251,7 +327,7 @@ const saveLabelColor = computed(() => {
                         Próximo: {{ nextStepLabel }}
                     </button>
 
-                    <!-- Last step: call to download -->
+                    <!-- Last step: abre estilo antes do checkout -->
                     <button
                         v-else
                         type="button"
@@ -288,3 +364,8 @@ const saveLabelColor = computed(() => {
         </div>
     </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

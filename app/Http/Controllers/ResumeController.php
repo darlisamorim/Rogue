@@ -100,6 +100,19 @@ class ResumeController extends Controller
         return redirect()->route('resumes.edit', $resume);
     }
 
+    public function show(Resume $resume): Response
+    {
+        abort_if($resume->user_id !== Auth::id(), 403);
+        abort_unless($resume->is_downloaded, 403, 'Pagamento necessário para baixar este currículo.');
+
+        $template = $resume->template;
+
+        return Inertia::render('Resume/Download', [
+            'resume'   => $resume,
+            'template' => $template,
+        ]);
+    }
+
     public function edit(Resume $resume): Response
     {
         abort_if($resume->user_id !== Auth::id(), 403);

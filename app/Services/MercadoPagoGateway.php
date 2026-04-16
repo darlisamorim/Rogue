@@ -24,29 +24,33 @@ class MercadoPagoGateway implements PaymentGatewayInterface
 
     public function createPixCharge(Transaction $transaction, User $user): array
     {
+        $payload = [
+            'payment_method_id'  => 'pix',
+            'transaction_amount' => (float) $transaction->amount,
+            'description'        => $this->descriptionFor($transaction->type),
+            'payer'              => $this->buildPayer($user),
+            'metadata'           => [
+                'transaction_id' => $transaction->id,
+                'user_id'        => $user->id,
+            ],
+        ];
+
+        Log::info('MercadoPago payload', $payload);
+
         $response = Http::withToken($this->accessToken)
             ->withHeaders(['X-Idempotency-Key' => 'rogue-txn-' . $transaction->id])
-            ->post("{$this->baseUrl}/v1/payments", [
-                'payment_method_id'  => 'pix',
-                'transaction_amount' => (float) $transaction->amount,
-                'description'        => $this->descriptionFor($transaction->type),
-                'date_of_expiration' => now()->addMinutes(30)->toIso8601String(),
-                'payer'              => [
-                    'email'          => $user->email,
-                    'first_name'     => explode(' ', $user->name)[0],
-                    'last_name'      => implode(' ', array_slice(explode(' ', $user->name), 1)) ?: 'User',
-                    'identification' => [
-                        'type'   => 'CPF',
-                        'number' => preg_replace('/\D/', '', $user->cpf ?? '00000000000'),
-                    ],
-                ],
-                'metadata' => [
-                    'transaction_id' => $transaction->id,
-                    'user_id'        => $user->id,
-                ],
-            ]);
+            ->post("{$this->baseUrl}/v1/payments", $payload);
 
-        $response->throw();
+        if ($response->failed()) {
+            Log::error('MercadoPago createPixCharge failed', [
+                'status'   => $response->status(),
+                'body'     => $response->body(),
+                'amount'   => $transaction->amount,
+                'payer'    => $this->buildPayer($user),
+            ]);
+            $response->throw();
+        }
+
         $data = $response->json();
 
         $pixData = $data['point_of_interaction']['transaction_data'] ?? [];
@@ -128,6 +132,63 @@ class MercadoPagoGateway implements PaymentGatewayInterface
             Log::error('MercadoPago webhook parse error', ['error' => $e->getMessage()]);
             return [];
         }
+    }
+
+    /**
+     * Consulta o status atual de uma transação diretamente na API do MP.
+     * Retorna array com 'status' mapeado para os status internos, ou null em caso de erro.
+     */
+    public function checkTransactionStatus(string $gatewayTransactionId): ?array
+    {
+        try {
+            $response = Http::withToken($this->accessToken)
+                ->get("{$this->baseUrl}/v1/payments/{$gatewayTransactionId}");
+
+            if ($response->failed()) {
+                return null;
+            }
+
+            $payment = $response->json();
+
+            $status = match ($payment['status'] ?? '') {
+                'approved'            => Transaction::STATUS_CONFIRMED,
+                'rejected', 'cancelled' => Transaction::STATUS_FAILED,
+                default               => Transaction::STATUS_PENDING,
+            };
+
+            $gross = (float) ($payment['transaction_amount'] ?? 0);
+            $fee   = (float) ($payment['fee_details'][0]['amount'] ?? round($gross * 0.0099, 2));
+
+            return [
+                'status'       => $status,
+                'gross_amount' => $gross,
+                'fee_amount'   => $fee,
+                'net_amount'   => round($gross - $fee, 2),
+            ];
+        } catch (\Exception $e) {
+            Log::error('MercadoPago checkTransactionStatus error', ['error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    private function buildPayer(User $user): array
+    {
+        $nameParts = explode(' ', $user->name);
+        $payer = [
+            'email'      => $user->email,
+            'first_name' => $nameParts[0],
+            'last_name'  => implode(' ', array_slice($nameParts, 1)) ?: $nameParts[0],
+        ];
+
+        $cpf = preg_replace('/\D/', '', $user->cpf ?? '');
+        if (strlen($cpf) === 11) {
+            $payer['identification'] = [
+                'type'   => 'CPF',
+                'number' => $cpf,
+            ];
+        }
+
+        return $payer;
     }
 
     private function descriptionFor(string $type): string

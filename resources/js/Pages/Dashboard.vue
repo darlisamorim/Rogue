@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { Head, Link, usePage } from '@inertiajs/vue3'
+import { Head, Link, router, usePage } from '@inertiajs/vue3'
+
+function goToBuyCredits() {
+    router.get(route('payment.checkout'), { type: 'first_download' })
+}
 
 type ResumeItem = {
     id: number
@@ -111,7 +115,7 @@ const stats = computed(() => [
                             </p>
                         </div>
                     </div>
-                    <button class="shrink-0 px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors">
+                    <button @click="goToBuyCredits" class="shrink-0 px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors">
                         Comprar créditos
                     </button>
                 </div>
@@ -213,7 +217,7 @@ const stats = computed(() => [
                             <p class="text-blue-200 text-sm font-medium mb-1">Seu saldo</p>
                             <p class="text-4xl font-black">{{ formatBalance(creditBalance) }}</p>
                             <p class="text-blue-200 text-xs mt-2">em créditos disponíveis</p>
-                            <button class="mt-4 w-full py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold rounded-lg transition-colors">
+                            <button @click="goToBuyCredits" class="mt-4 w-full py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold rounded-lg transition-colors">
                                 + Comprar créditos
                             </button>
                         </div>
