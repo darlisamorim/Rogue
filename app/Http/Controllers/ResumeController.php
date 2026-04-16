@@ -107,9 +107,37 @@ class ResumeController extends Controller
 
         $template = $resume->template;
 
+        $data = $resume->data;
+
+        // Remove entradas vazias que o usuário criou mas não preencheu
+        $data['workHistory'] = array_values(array_filter(
+            $data['workHistory'] ?? [],
+            fn ($j) => !empty($j['role']) || !empty($j['company'])
+        ));
+        $data['education'] = array_values(array_filter(
+            $data['education'] ?? [],
+            fn ($e) => !empty($e['degree']) || !empty($e['institution'])
+        ));
+        $data['skills'] = array_values(array_filter(
+            $data['skills'] ?? [],
+            fn ($s) => !empty($s['name'])
+        ));
+        $data['links'] = array_values(array_filter(
+            $data['links'] ?? [],
+            fn ($l) => !empty($l['url'])
+        ));
+
         return Inertia::render('Resume/Download', [
-            'resume'   => $resume,
-            'template' => $template,
+            'resume' => [
+                'id'            => $resume->id,
+                'title'         => $resume->title,
+                'data'          => $data,
+                'customization' => $resume->customization,
+            ],
+            'template' => $template ? [
+                'name'           => $template->name,
+                'component_name' => $template->component_name,
+            ] : null,
         ]);
     }
 
