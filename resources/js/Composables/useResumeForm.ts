@@ -21,6 +21,12 @@ export function useResumeForm(
     const resumeData = ref<ResumeData>({
         ...defaultResumeData(),
         ...initialData,
+        // Deep-merge `additional` so old resumes (stored with `courses`) still work
+        // and new fields (internships / references / activities) always exist
+        additional: {
+            ...defaultResumeData().additional,
+            ...(initialData?.additional ?? {}),
+        },
     })
 
     const customization = ref<ResumeCustomization>({

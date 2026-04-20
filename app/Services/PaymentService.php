@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\PaymentGatewayInterface;
+use App\Models\Coupon;
 use App\Models\CreditPackage;
 use App\Models\PricingConfig;
 use App\Models\Transaction;
@@ -35,26 +36,51 @@ class PaymentService
     /**
      * Cria uma transação pendente e gera o QR Code Pix.
      */
-    public function initiateCharge(User $user, string $type, ?int $resumeId = null, ?int $packageId = null): Transaction
-    {
-        $amount = $this->getAmount($type, $packageId);
-        $gateway = $this->getActiveGatewayName();
+    public function initiateCharge(
+        User    $user,
+        string  $type,
+        ?int    $resumeId   = null,
+        ?int    $packageId  = null,
+        ?string $payerCpf   = null,
+        ?string $couponCode = null,
+    ): Transaction {
+        $baseAmount = $this->getAmount($type, $packageId);
+        $gateway    = $this->getActiveGatewayName();
 
-        return DB::transaction(function () use ($user, $type, $resumeId, $amount, $gateway) {
-            // Cria a transação no banco primeiro
+        // Aplica cupom se fornecido
+        $coupon         = null;
+        $discountAmount = 0.0;
+
+        if ($couponCode) {
+            $coupon = Coupon::where('code', strtoupper($couponCode))->first();
+            if ($coupon && $coupon->isValid()) {
+                $discountAmount = $coupon->calculateDiscount($baseAmount);
+            }
+        }
+
+        $finalAmount = max(0.01, round($baseAmount - $discountAmount, 2));
+
+        return DB::transaction(function () use ($user, $type, $resumeId, $baseAmount, $finalAmount, $discountAmount, $coupon, $payerCpf, $gateway) {
             $transaction = Transaction::create([
-                'user_id'      => $user->id,
-                'resume_id'    => $resumeId,
-                'type'         => $type,
-                'amount'       => $amount,
-                'gross_amount' => $amount,
-                'fee_amount'   => 0,
-                'net_amount'   => $amount,
-                'gateway'      => $gateway,
-                'status'       => Transaction::STATUS_PENDING,
+                'user_id'         => $user->id,
+                'resume_id'       => $resumeId,
+                'type'            => $type,
+                'amount'          => $finalAmount,
+                'gross_amount'    => $finalAmount,
+                'fee_amount'      => 0,
+                'net_amount'      => $finalAmount,
+                'gateway'         => $gateway,
+                'status'          => Transaction::STATUS_PENDING,
+                'payer_cpf'       => $payerCpf,
+                'coupon_id'       => $coupon?->id,
+                'discount_amount' => $discountAmount,
             ]);
 
-            // Chama o gateway para gerar o Pix
+            // Registra uso do cupom
+            if ($coupon) {
+                $coupon->increment('current_uses');
+            }
+
             try {
                 $chargeData = $this->getActiveGateway()->createPixCharge($transaction, $user);
 
@@ -64,7 +90,7 @@ class PaymentService
                     'pix_copy_paste'         => $chargeData['pix_copy_paste'],
                     'expires_at'             => $chargeData['expires_at'],
                     'fee_amount'             => $chargeData['fee_amount'],
-                    'net_amount'             => round($amount - $chargeData['fee_amount'], 2),
+                    'net_amount'             => round($finalAmount - $chargeData['fee_amount'], 2),
                 ]);
             } catch (\Exception $e) {
                 Log::error('Payment gateway error', [
@@ -72,6 +98,10 @@ class PaymentService
                     'transaction_id' => $transaction->id,
                     'error'          => $e->getMessage(),
                 ]);
+                // Reverte uso do cupom em caso de falha no gateway
+                if ($coupon) {
+                    $coupon->decrement('current_uses');
+                }
                 $transaction->update(['status' => Transaction::STATUS_FAILED]);
                 throw $e;
             }

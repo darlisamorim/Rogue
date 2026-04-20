@@ -10,16 +10,16 @@ const emit = defineEmits<{
     (e: 'update', value: AdditionalData): void
 }>()
 
-type SectionKey = 'languages' | 'certifications' | 'courses' | 'hobbies' | 'references' | 'internships'
+type SectionKey = 'languages' | 'certifications' | 'hobbies' | 'internships' | 'references' | 'activities'
 const activeSection = ref<SectionKey | null>(null)
 
 const sections = [
-    { key: 'languages' as SectionKey, label: 'Idiomas', icon: '🌍', description: 'Idiomas que você fala' },
-    { key: 'certifications' as SectionKey, label: 'Cursos', icon: '📚', description: 'Certificados e cursos' },
-    { key: 'courses' as SectionKey, label: 'Estágios', icon: '🏢', description: 'Estágios realizados' },
-    { key: 'hobbies' as SectionKey, label: 'Passatempos', icon: '🎯', description: 'Hobbies e interesses' },
-    { key: 'references' as SectionKey, label: 'Referências', icon: '👥', description: 'Referências profissionais' },
-    { key: 'internships' as SectionKey, label: 'Atividades', icon: '⭐', description: 'Atividades extracurriculares' },
+    { key: 'languages' as SectionKey,     label: 'Idiomas',      icon: '🌍', description: 'Idiomas que você fala' },
+    { key: 'certifications' as SectionKey, label: 'Cursos',       icon: '📚', description: 'Certificados e cursos' },
+    { key: 'internships' as SectionKey,    label: 'Estágios',     icon: '🏢', description: 'Estágios realizados' },
+    { key: 'hobbies' as SectionKey,        label: 'Passatempos',  icon: '🎯', description: 'Hobbies e interesses' },
+    { key: 'references' as SectionKey,     label: 'Referências',  icon: '👥', description: 'Referências profissionais' },
+    { key: 'activities' as SectionKey,     label: 'Atividades',   icon: '⭐', description: 'Atividades extracurriculares' },
 ]
 
 function toggleSection(key: SectionKey) {
@@ -77,26 +77,54 @@ function removeHobby(index: number) {
     emit('update', { ...props.data, hobbies: props.data.hobbies.filter((_, i) => i !== index) })
 }
 
-// Courses (using courses array)
-const courseInput = ref('')
-function addCourse() {
-    const c = courseInput.value.trim()
-    if (c) {
-        emit('update', { ...props.data, courses: [...props.data.courses, c] })
-        courseInput.value = ''
+// Internships
+const internshipInput = ref('')
+function addInternship() {
+    const v = internshipInput.value.trim()
+    if (v) {
+        emit('update', { ...props.data, internships: [...props.data.internships, v] })
+        internshipInput.value = ''
     }
 }
-function removeCourse(index: number) {
-    emit('update', { ...props.data, courses: props.data.courses.filter((_, i) => i !== index) })
+function removeInternship(index: number) {
+    emit('update', { ...props.data, internships: props.data.internships.filter((_, i) => i !== index) })
+}
+
+// References
+const referenceInput = ref('')
+function addReference() {
+    const v = referenceInput.value.trim()
+    if (v) {
+        emit('update', { ...props.data, references: [...props.data.references, v] })
+        referenceInput.value = ''
+    }
+}
+function removeReference(index: number) {
+    emit('update', { ...props.data, references: props.data.references.filter((_, i) => i !== index) })
+}
+
+// Activities
+const activityInput = ref('')
+function addActivity() {
+    const v = activityInput.value.trim()
+    if (v) {
+        emit('update', { ...props.data, activities: [...props.data.activities, v] })
+        activityInput.value = ''
+    }
+}
+function removeActivity(index: number) {
+    emit('update', { ...props.data, activities: props.data.activities.filter((_, i) => i !== index) })
 }
 
 const levelOptions = ['Básico', 'Pré-Intermediário', 'Intermediário', 'Avançado', 'Fluente', 'Nativo']
 
 function hasContent(key: SectionKey): boolean {
-    if (key === 'languages') return props.data.languages.length > 0
+    if (key === 'languages')     return props.data.languages.length > 0
     if (key === 'certifications') return props.data.certifications.length > 0
-    if (key === 'courses') return props.data.courses.length > 0
-    if (key === 'hobbies') return props.data.hobbies.length > 0
+    if (key === 'hobbies')       return props.data.hobbies.length > 0
+    if (key === 'internships')   return props.data.internships.length > 0
+    if (key === 'references')    return props.data.references.length > 0
+    if (key === 'activities')    return props.data.activities.length > 0
     return false
 }
 </script>
@@ -127,7 +155,6 @@ function hasContent(key: SectionKey): boolean {
                     <p class="text-sm font-semibold text-gray-800">{{ section.label }}</p>
                     <p class="text-xs text-gray-400">{{ section.description }}</p>
                 </div>
-                <!-- Badge de conteúdo -->
                 <div
                     v-if="hasContent(section.key)"
                     class="absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-500"
@@ -260,33 +287,84 @@ function hasContent(key: SectionKey): boolean {
                 </div>
             </div>
 
-            <!-- CURSOS (estágios / extracurriculares) -->
-            <div v-else class="space-y-3">
-                <h3 class="text-base font-semibold text-gray-800">
-                    {{ sections.find(s => s.key === activeSection)?.icon }}
-                    {{ sections.find(s => s.key === activeSection)?.label }}
-                </h3>
+            <!-- ESTÁGIOS -->
+            <div v-else-if="activeSection === 'internships'" class="space-y-3">
+                <h3 class="text-base font-semibold text-gray-800 flex items-center gap-2">🏢 Estágios</h3>
                 <div class="flex flex-wrap gap-2">
                     <span
-                        v-for="(c, i) in data.courses"
+                        v-for="(item, i) in data.internships"
                         :key="i"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-gray-100 text-gray-700 border border-gray-200"
                     >
-                        {{ c }}
-                        <button type="button" @click="removeCourse(i)" class="hover:text-red-500">
+                        {{ item }}
+                        <button type="button" @click="removeInternship(i)" class="hover:text-red-500">
                             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                         </button>
                     </span>
                 </div>
                 <div class="flex gap-2">
                     <input
-                        v-model="courseInput"
+                        v-model="internshipInput"
                         type="text"
-                        @keydown.enter.prevent="addCourse"
-                        placeholder="Adicionar item..."
+                        @keydown.enter.prevent="addInternship"
+                        placeholder="Ex: Estágio em Marketing na Empresa X..."
                         class="flex-1 rounded-lg border-gray-200 bg-gray-50 text-sm focus:bg-white focus:border-blue-500 focus:ring-blue-500"
                     />
-                    <button type="button" @click="addCourse" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Adicionar</button>
+                    <button type="button" @click="addInternship" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Adicionar</button>
+                </div>
+            </div>
+
+            <!-- REFERÊNCIAS -->
+            <div v-else-if="activeSection === 'references'" class="space-y-3">
+                <h3 class="text-base font-semibold text-gray-800 flex items-center gap-2">👥 Referências</h3>
+                <div class="flex flex-wrap gap-2">
+                    <span
+                        v-for="(item, i) in data.references"
+                        :key="i"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-gray-100 text-gray-700 border border-gray-200"
+                    >
+                        {{ item }}
+                        <button type="button" @click="removeReference(i)" class="hover:text-red-500">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </span>
+                </div>
+                <div class="flex gap-2">
+                    <input
+                        v-model="referenceInput"
+                        type="text"
+                        @keydown.enter.prevent="addReference"
+                        placeholder="Ex: João Silva — Gerente na Empresa Y"
+                        class="flex-1 rounded-lg border-gray-200 bg-gray-50 text-sm focus:bg-white focus:border-blue-500 focus:ring-blue-500"
+                    />
+                    <button type="button" @click="addReference" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Adicionar</button>
+                </div>
+            </div>
+
+            <!-- ATIVIDADES EXTRACURRICULARES -->
+            <div v-else-if="activeSection === 'activities'" class="space-y-3">
+                <h3 class="text-base font-semibold text-gray-800 flex items-center gap-2">⭐ Atividades Extracurriculares</h3>
+                <div class="flex flex-wrap gap-2">
+                    <span
+                        v-for="(item, i) in data.activities"
+                        :key="i"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm bg-gray-100 text-gray-700 border border-gray-200"
+                    >
+                        {{ item }}
+                        <button type="button" @click="removeActivity(i)" class="hover:text-red-500">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        </button>
+                    </span>
+                </div>
+                <div class="flex gap-2">
+                    <input
+                        v-model="activityInput"
+                        type="text"
+                        @keydown.enter.prevent="addActivity"
+                        placeholder="Ex: Voluntariado, monitoria, projeto social..."
+                        class="flex-1 rounded-lg border-gray-200 bg-gray-50 text-sm focus:bg-white focus:border-blue-500 focus:ring-blue-500"
+                    />
+                    <button type="button" @click="addActivity" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Adicionar</button>
                 </div>
             </div>
         </div>

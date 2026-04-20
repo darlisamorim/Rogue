@@ -253,14 +253,36 @@ function skillPercent(level: number) {
                 </div>
             </div>
 
-            <!-- Cursos -->
-            <div v-if="resumeData.additional.courses.length > 0">
+            <!-- Estágios -->
+            <div v-if="resumeData.additional.internships.length > 0">
                 <h2
                     class="font-bold uppercase tracking-wider mb-3 pb-1 border-b-2"
                     :style="{ color: customization.color, borderColor: customization.color, fontSize: fs.xs }"
-                >Cursos</h2>
+                >Estágios</h2>
                 <ul class="list-disc list-inside space-y-0.5">
-                    <li v-for="course in resumeData.additional.courses" :key="course" class="text-gray-700" :style="{ fontSize: fs.xs }">{{ course }}</li>
+                    <li v-for="item in resumeData.additional.internships" :key="item" class="text-gray-700" :style="{ fontSize: fs.xs }">{{ item }}</li>
+                </ul>
+            </div>
+
+            <!-- Atividades Extracurriculares -->
+            <div v-if="resumeData.additional.activities.length > 0">
+                <h2
+                    class="font-bold uppercase tracking-wider mb-3 pb-1 border-b-2"
+                    :style="{ color: customization.color, borderColor: customization.color, fontSize: fs.xs }"
+                >Atividades</h2>
+                <ul class="list-disc list-inside space-y-0.5">
+                    <li v-for="item in resumeData.additional.activities" :key="item" class="text-gray-700" :style="{ fontSize: fs.xs }">{{ item }}</li>
+                </ul>
+            </div>
+
+            <!-- Referências -->
+            <div v-if="resumeData.additional.references.length > 0">
+                <h2
+                    class="font-bold uppercase tracking-wider mb-3 pb-1 border-b-2"
+                    :style="{ color: customization.color, borderColor: customization.color, fontSize: fs.xs }"
+                >Referências</h2>
+                <ul class="list-disc list-inside space-y-0.5">
+                    <li v-for="item in resumeData.additional.references" :key="item" class="text-gray-700" :style="{ fontSize: fs.xs }">{{ item }}</li>
                 </ul>
             </div>
         </div>

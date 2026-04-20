@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Coupon;
 
 class Transaction extends Model
 {
@@ -14,6 +15,9 @@ class Transaction extends Model
         'amount',
         'gateway',
         'gateway_transaction_id',
+        'payer_cpf',
+        'coupon_id',
+        'discount_amount',
         'gross_amount',
         'fee_amount',
         'net_amount',
@@ -27,12 +31,13 @@ class Transaction extends Model
     protected function casts(): array
     {
         return [
-            'amount' => 'decimal:2',
-            'gross_amount' => 'decimal:2',
-            'fee_amount' => 'decimal:2',
-            'net_amount' => 'decimal:2',
-            'expires_at' => 'datetime',
-            'confirmed_at' => 'datetime',
+            'amount'          => 'decimal:2',
+            'discount_amount' => 'decimal:2',
+            'gross_amount'    => 'decimal:2',
+            'fee_amount'      => 'decimal:2',
+            'net_amount'      => 'decimal:2',
+            'expires_at'      => 'datetime',
+            'confirmed_at'    => 'datetime',
         ];
     }
 
@@ -55,6 +60,11 @@ class Transaction extends Model
     public function resume(): BelongsTo
     {
         return $this->belongsTo(Resume::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public function isPending(): bool

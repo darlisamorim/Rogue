@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\User;
+use App\Rules\ValidCpf;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -30,7 +31,9 @@ class ProfileUpdateRequest extends FormRequest
             'bio'                => ['nullable', 'string', 'max:600'],
             'date_of_birth'      => ['nullable', 'date'],
             'nationality'        => ['nullable', 'string', 'max:80'],
-            'cpf'                => ['nullable', 'string', 'regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/'],
+            'cpf'                => $this->user()->cpf
+                ? ['sometimes'] // CPF já cadastrado — ignorado (bloqueado no controller)
+                : ['nullable', 'string', 'regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/', new ValidCpf(), Rule::unique(User::class)],
         ];
     }
 }

@@ -6,8 +6,10 @@ use App\Events\PaymentConfirmed;
 use App\Models\Resume;
 use App\Models\Transaction;
 use App\Services\CreditService;
+use Illuminate\Events\Attributes\AsEventListener;
 use Illuminate\Support\Facades\Log;
 
+#[AsEventListener(event: PaymentConfirmed::class)]
 class ReleasePdfDownload
 {
     public function __construct(private CreditService $creditService) {}

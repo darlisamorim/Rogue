@@ -57,8 +57,10 @@ export interface CertificationEntry {
 export interface AdditionalData {
     languages: LanguageEntry[]
     certifications: CertificationEntry[]
-    courses: string[]
     hobbies: string[]
+    internships: string[]
+    references: string[]
+    activities: string[]
 }
 
 export interface ResumeData {
@@ -122,8 +124,10 @@ export const defaultResumeData = (): ResumeData => ({
     additional: {
         languages: [],
         certifications: [],
-        courses: [],
         hobbies: [],
+        internships: [],
+        references: [],
+        activities: [],
     },
 })
 

@@ -45,6 +45,12 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Meus Currículos
                                 </NavLink>
+                                <NavLink
+                                    :href="route('transactions.index')"
+                                    :active="route().current('transactions.*')"
+                                >
+                                    Pagamentos
+                                </NavLink>
                             </div>
                         </div>
 
@@ -151,6 +157,18 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('dashboard')"
                         >
                             Painel
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('resumes.index')"
+                            :active="route().current('resumes.*')"
+                        >
+                            Meus Currículos
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('transactions.index')"
+                            :active="route().current('transactions.*')"
+                        >
+                            Pagamentos
                         </ResponsiveNavLink>
                     </div>
 

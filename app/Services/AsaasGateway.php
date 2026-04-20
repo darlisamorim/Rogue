@@ -24,7 +24,7 @@ class AsaasGateway implements PaymentGatewayInterface
 
     public function createPixCharge(Transaction $transaction, User $user): array
     {
-        $customerId = $this->findOrCreateCustomer($user);
+        $customerId = $this->findOrCreateCustomer($user, $transaction->payer_cpf);
 
         $response = Http::withHeaders(['access_token' => $this->apiKey])
             ->post("{$this->baseUrl}/payments", [
@@ -98,9 +98,11 @@ class AsaasGateway implements PaymentGatewayInterface
         ];
     }
 
-    private function findOrCreateCustomer(User $user): string
+    private function findOrCreateCustomer(User $user, ?string $payerCpf = null): string
     {
-        $cpf = preg_replace('/\D/', '', $user->cpf ?? '');
+        // Prioriza CPF do pagador informado no checkout; fallback para CPF da conta
+        $rawCpf = $payerCpf ?? $user->cpf ?? '';
+        $cpf    = preg_replace('/\D/', '', $rawCpf);
 
         if ($cpf) {
             // Tenta encontrar cliente existente pelo CPF

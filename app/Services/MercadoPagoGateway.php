@@ -28,7 +28,7 @@ class MercadoPagoGateway implements PaymentGatewayInterface
             'payment_method_id'  => 'pix',
             'transaction_amount' => (float) $transaction->amount,
             'description'        => $this->descriptionFor($transaction->type),
-            'payer'              => $this->buildPayer($user),
+            'payer'              => $this->buildPayer($user, $transaction->payer_cpf),
             'metadata'           => [
                 'transaction_id' => $transaction->id,
                 'user_id'        => $user->id,
@@ -171,7 +171,7 @@ class MercadoPagoGateway implements PaymentGatewayInterface
         }
     }
 
-    private function buildPayer(User $user): array
+    private function buildPayer(User $user, ?string $payerCpf = null): array
     {
         $nameParts = explode(' ', $user->name);
         $payer = [
@@ -180,7 +180,9 @@ class MercadoPagoGateway implements PaymentGatewayInterface
             'last_name'  => implode(' ', array_slice($nameParts, 1)) ?: $nameParts[0],
         ];
 
-        $cpf = preg_replace('/\D/', '', $user->cpf ?? '');
+        // Prioriza CPF do pagador informado no checkout; fallback para CPF da conta
+        $rawCpf = $payerCpf ?? $user->cpf ?? '';
+        $cpf    = preg_replace('/\D/', '', $rawCpf);
         if (strlen($cpf) === 11) {
             $payer['identification'] = [
                 'type'   => 'CPF',

@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessPaymentWebhookJob;
+use App\Models\Coupon;
 use App\Models\CreditPackage;
 use App\Models\PricingConfig;
 use App\Models\Resume;
 use App\Models\Transaction;
+use App\Rules\ValidCpf;
 use App\Services\CreditService;
 use App\Services\MercadoPagoGateway;
 use App\Services\AsaasGateway;
@@ -66,6 +68,7 @@ class PaymentController extends Controller
             'hasCredits'     => $hasCredits,
             'creditBalance'  => (float) $user->credit_balance,
             'creditPackages' => $creditPackages,
+            'userCpf'        => $user->cpf ?? null,
         ]);
     }
 
@@ -76,20 +79,24 @@ class PaymentController extends Controller
     public function initiate(Request $request): JsonResponse
     {
         $request->validate([
-            'type'       => 'required|in:' . implode(',', [
+            'type'        => 'required|in:' . implode(',', [
                 Transaction::TYPE_DOWNLOAD,
                 Transaction::TYPE_REDOWNLOAD,
                 Transaction::TYPE_TEMPLATE_CHANGE,
                 Transaction::TYPE_CREDIT_PURCHASE,
             ]),
-            'resume_id'  => 'nullable|integer|exists:resumes,id',
-            'package_id' => 'nullable|integer|exists:credit_packages,id',
+            'resume_id'   => 'nullable|integer|exists:resumes,id',
+            'package_id'  => 'nullable|integer|exists:credit_packages,id',
+            'payer_cpf'   => ['nullable', 'string', 'regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/', new ValidCpf()],
+            'coupon_code' => 'nullable|string|max:50',
         ]);
 
-        $user      = Auth::user();
-        $type      = $request->type;
-        $resumeId  = $request->resume_id;
-        $packageId = $request->package_id;
+        $user       = Auth::user();
+        $type       = $request->type;
+        $resumeId   = $request->resume_id;
+        $packageId  = $request->package_id;
+        $payerCpf   = $request->payer_cpf;
+        $couponCode = $request->coupon_code;
 
         // Garante que o currículo pertence ao usuário
         if ($resumeId) {
@@ -114,9 +121,13 @@ class PaymentController extends Controller
             }
         }
 
-        // Fluxo por Pix
+        // Fluxo por Pix — exige CPF do pagador
+        if (empty($payerCpf)) {
+            return response()->json(['error' => 'Informe o CPF do pagador para gerar o Pix.'], 422);
+        }
+
         try {
-            $transaction = $this->paymentService->initiateCharge($user, $type, $resumeId, $packageId);
+            $transaction = $this->paymentService->initiateCharge($user, $type, $resumeId, $packageId, $payerCpf, $couponCode);
 
             return response()->json([
                 'paid_with'      => 'pix',
@@ -178,6 +189,47 @@ class PaymentController extends Controller
             'status'     => $transaction->status,
             'confirmed'  => $transaction->isConfirmed(),
             'expires_at' => $transaction->expires_at?->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Valida um código de cupom e retorna o desconto aplicável.
+     */
+    public function validateCoupon(Request $request): JsonResponse
+    {
+        $request->validate([
+            'code'  => 'required|string|max:50',
+            'type'  => 'required|in:first_download,redownload,template_change,credit_purchase',
+            'package_id' => 'nullable|integer|exists:credit_packages,id',
+        ]);
+
+        $coupon = Coupon::where('code', strtoupper($request->code))->first();
+
+        if (!$coupon || !$coupon->isValid()) {
+            return response()->json(['valid' => false, 'message' => 'Cupom inválido ou expirado.'], 422);
+        }
+
+        $actionSlug = match ($request->type) {
+            'first_download'  => PricingConfig::ACTION_FIRST_DOWNLOAD,
+            'redownload'      => PricingConfig::ACTION_REDOWNLOAD,
+            'template_change' => PricingConfig::ACTION_TEMPLATE_CHANGE,
+            default           => PricingConfig::ACTION_FIRST_DOWNLOAD,
+        };
+
+        $baseAmount = $request->type === 'credit_purchase' && $request->package_id
+            ? (float) CreditPackage::findOrFail($request->package_id)->price
+            : PricingConfig::getPrice($actionSlug);
+
+        $discount   = $coupon->calculateDiscount($baseAmount);
+        $finalPrice = max(0.01, round($baseAmount - $discount, 2));
+
+        return response()->json([
+            'valid'       => true,
+            'discount'    => $discount,
+            'final_price' => $finalPrice,
+            'message'     => $coupon->type === 'percentage'
+                ? "{$coupon->value}% de desconto aplicado!"
+                : 'Desconto de R$ ' . number_format($discount, 2, ',', '.') . ' aplicado!',
         ]);
     }
 

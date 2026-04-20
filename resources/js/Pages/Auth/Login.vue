@@ -6,6 +6,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import SocialLoginButtons from '@/Components/Auth/SocialLoginButtons.vue';
 
 defineProps<{
     canResetPassword?: boolean;
@@ -33,6 +34,15 @@ const submit = () => {
 
         <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
             {{ status }}
+        </div>
+
+        <!-- Login social -->
+        <SocialLoginButtons class="mb-5" />
+
+        <div class="flex items-center gap-3 mb-5 text-xs text-gray-400">
+            <div class="flex-1 border-t border-gray-200"></div>
+            <span>ou entre com e-mail</span>
+            <div class="flex-1 border-t border-gray-200"></div>
         </div>
 
         <form @submit.prevent="submit">

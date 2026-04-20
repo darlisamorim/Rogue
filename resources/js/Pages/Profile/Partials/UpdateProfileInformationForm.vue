@@ -240,17 +240,33 @@ function onCpfInput(e: Event) {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <InputLabel for="cpf" value="CPF" />
-                        <input
-                            id="cpf" type="text"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                            :value="form.cpf"
-                            @input="onCpfInput"
-                            placeholder="000.000.000-00"
-                            autocomplete="off"
-                            inputmode="numeric"
-                            maxlength="14"
-                        />
-                        <InputError class="mt-1.5" :message="form.errors.cpf" />
+
+                        <!-- CPF já cadastrado: somente leitura -->
+                        <div v-if="user.cpf" class="mt-1 flex items-center gap-2">
+                            <div class="flex-1 flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200 bg-gray-50 text-sm text-gray-700 select-none">
+                                <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                </svg>
+                                <span class="font-mono tracking-wider">{{ user.cpf }}</span>
+                            </div>
+                            <span class="text-xs text-gray-400 whitespace-nowrap">não editável</span>
+                        </div>
+
+                        <!-- CPF ainda não cadastrado: editável -->
+                        <div v-else>
+                            <input
+                                id="cpf" type="text"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                :value="form.cpf"
+                                @input="onCpfInput"
+                                placeholder="000.000.000-00"
+                                autocomplete="off"
+                                inputmode="numeric"
+                                maxlength="14"
+                            />
+                            <p class="mt-1 text-xs text-gray-400">Após salvo, o CPF não pode ser alterado.</p>
+                            <InputError class="mt-1" :message="form.errors.cpf" />
+                        </div>
                     </div>
                 </div>
             </div>

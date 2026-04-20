@@ -236,8 +236,8 @@ function formatPrice(val: string | number) {
                 <span class="text-lg font-black text-blue-600">Rogue</span>
                 <p class="text-sm text-gray-400">© {{ new Date().getFullYear() }} Rogue. Todos os direitos reservados.</p>
                 <div class="flex gap-4 text-sm text-gray-400">
-                    <a href="#" class="hover:text-gray-600">Privacidade</a>
-                    <a href="#" class="hover:text-gray-600">Termos de uso</a>
+                    <Link :href="route('legal.privacy')" class="hover:text-gray-600">Privacidade</Link>
+                    <Link :href="route('legal.terms')" class="hover:text-gray-600">Termos de uso</Link>
                 </div>
             </div>
         </footer>

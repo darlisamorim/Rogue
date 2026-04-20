@@ -81,8 +81,10 @@ class ResumeController extends Controller
                 'additional' => [
                     'languages' => [],
                     'certifications' => [],
-                    'courses' => [],
                     'hobbies' => [],
+                    'internships' => [],
+                    'references' => [],
+                    'activities' => [],
                 ],
             ],
             'customization' => [
