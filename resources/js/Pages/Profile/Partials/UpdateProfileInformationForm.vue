@@ -3,13 +3,14 @@ import InputError from '@/Components/InputError.vue'
 import InputLabel from '@/Components/InputLabel.vue'
 import TextInput from '@/Components/TextInput.vue'
 import { Link, useForm, usePage } from '@inertiajs/vue3'
+import type { User } from '@/types'
 
 defineProps<{
     mustVerifyEmail?: boolean
     status?: string
 }>()
 
-const user = usePage().props.auth.user as unknown as Record<string, string | null>
+const user = usePage().props.auth.user as User
 
 const form = useForm({
     name:               user.name               ?? '',
@@ -17,9 +18,10 @@ const form = useForm({
     professional_title: user.professional_title ?? '',
     phone:              user.phone              ?? '',
     location:           user.location           ?? '',
-    linkedin_url:       user.linkedin_url        ?? '',
-    website_url:        user.website_url         ?? '',
+    linkedin_url:       user.linkedin_url       ?? '',
+    website_url:        user.website_url        ?? '',
     bio:                user.bio                ?? '',
+    // date_of_birth vem como YYYY-MM-DD (formatado no middleware Inertia)
     date_of_birth:      user.date_of_birth      ?? '',
     nationality:        user.nationality        ?? '',
     cpf:                user.cpf                ?? '',

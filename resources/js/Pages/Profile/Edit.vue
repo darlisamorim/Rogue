@@ -5,6 +5,7 @@ import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue'
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue'
 import { Head, router, usePage } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
+import type { User } from '@/types'
 
 defineProps<{
     mustVerifyEmail?: boolean
@@ -12,20 +13,23 @@ defineProps<{
 }>()
 
 const page = usePage()
-const user = computed(() => page.props.auth.user as unknown as Record<string, string | null>)
+const user = computed(() => page.props.auth.user as User)
 
-const profileFields = [
+const profileFields: (keyof User)[] = [
     'name', 'email', 'professional_title', 'phone',
     'location', 'linkedin_url', 'bio', 'nationality',
 ]
 const completeness = computed(() => {
     const u = user.value
-    const filled = profileFields.filter((f) => u[f] && String(u[f]).trim() !== '').length
+    const filled = profileFields.filter((f) => {
+        const v = u[f]
+        return v != null && String(v).trim() !== ''
+    }).length
     return Math.round((filled / profileFields.length) * 100)
 })
 
 const initials = computed(() => {
-    const parts = ((user.value.name as string) ?? '').split(' ').filter(Boolean)
+    const parts = (user.value.name ?? '').split(' ').filter(Boolean)
     return parts.slice(0, 2).map((p) => p[0].toUpperCase()).join('')
 })
 
